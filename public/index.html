@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Login</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <main style="max-width: 380px; margin-top: 10vh;">
+    <div class="card">
+      <h1>LM-ADV</h1>
+      <p class="muted">Sistema de advocacia em massa — acesso restrito a colaboradores do escritório.</p>
+      <form id="form-login">
+        <label for="email">E-mail</label>
+        <input id="email" type="email" required autocomplete="username" />
+        <label for="senha">Senha</label>
+        <input id="senha" type="password" required autocomplete="current-password" />
+        <button type="submit">Entrar</button>
+        <div id="mensagem-erro" class="erro"></div>
+      </form>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    document.getElementById("form-login").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const email = document.getElementById("email").value.trim();
+      const senha = document.getElementById("senha").value;
+      const erroEl = document.getElementById("mensagem-erro");
+      erroEl.textContent = "";
+      try {
+        const dados = await apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, senha }) });
+        salvarSessao(dados.token, dados.usuario);
+        window.location.href = "/dashboard.html";
+      } catch (e) {
+        erroEl.textContent = e.message || "Falha ao entrar";
+      }
+    });
+  </script>
+</body>
+</html>

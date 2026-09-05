@@ -1,0 +1,21 @@
+name = "lm-adv"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lm_adv_db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# Secrets (definir com `wrangler secret put NOME`, nunca commitar valores):
+#   JWT_SECRET          - segredo para assinar os tokens de sessao
+#   DATAJUD_API_KEY      - chave publica da API do DataJud (ver README)
+
+[vars]
+APP_NAME = "LM-ADV"

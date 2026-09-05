@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Colaboradores</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">LM-ADV</span>
+    <nav class="menu" id="menu-principal"></nav>
+    <div>
+      <span class="muted" id="usuario-logado"></span>
+      <button class="secundario" id="btn-sair">Sair</button>
+    </div>
+  </header>
+  <main>
+    <h1>Colaboradores</h1>
+    <p class="muted">Apenas administradores podem criar logins para os colaboradores do escritório.</p>
+
+    <div class="card">
+      <h2>Novo colaborador</h2>
+      <form id="form-usuario">
+        <div class="grade-2">
+          <div>
+            <label for="u-nome">Nome</label>
+            <input id="u-nome" required />
+          </div>
+          <div>
+            <label for="u-email">E-mail (login)</label>
+            <input id="u-email" type="email" required />
+          </div>
+        </div>
+        <div class="grade-2">
+          <div>
+            <label for="u-senha">Senha provisória</label>
+            <input id="u-senha" type="password" required minlength="8" />
+          </div>
+          <div>
+            <label for="u-papel">Papel</label>
+            <select id="u-papel">
+              <option value="advogado">Advogado(a)</option>
+              <option value="estagiario">Estagiário(a)</option>
+              <option value="admin">Administrador(a)</option>
+            </select>
+          </div>
+        </div>
+        <label for="u-oab">Número da OAB (opcional, sem o prefixo "OAB")</label>
+        <input id="u-oab" placeholder="Ex.: 123.456/SP" />
+        <button type="submit">Criar colaborador</button>
+        <div id="usuario-erro" class="erro"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Colaboradores cadastrados</h2>
+      <table>
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Status</th><th></th></tr></thead>
+        <tbody id="tabela-usuarios"></tbody>
+      </table>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    exigirLogin();
+    montarMenu("colaboradores");
+
+    async function carregarUsuarios() {
+      const { usuarios } = await apiFetch("/usuarios");
+      document.getElementById("tabela-usuarios").innerHTML = usuarios
+        .map(
+          (u) => `<tr>
+            <td>${u.nome}</td><td>${u.email}</td><td>${u.papel}</td>
+            <td><span class="pill">${u.ativo ? "ativo" : "inativo"}</span></td>
+            <td><button class="secundario" onclick="alternarStatus(${u.id}, ${u.ativo ? 0 : 1})">${u.ativo ? "Desativar" : "Ativar"}</button></td>
+          </tr>`
+        )
+        .join("");
+    }
+
+    async function alternarStatus(id, ativo) {
+      await apiFetch(`/usuarios/${id}/status`, { method: "PATCH", body: JSON.stringify({ ativo: !!ativo }) });
+      carregarUsuarios();
+    }
+    window.alternarStatus = alternarStatus;
+
+    document.getElementById("form-usuario").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const erroEl = document.getElementById("usuario-erro");
+      erroEl.textContent = "";
+      try {
+        await apiFetch("/usuarios", {
+          method: "POST",
+          body: JSON.stringify({
+            nome: document.getElementById("u-nome").value.trim(),
+            email: document.getElementById("u-email").value.trim(),
+            senha: document.getElementById("u-senha").value,
+            papel: document.getElementById("u-papel").value,
+            oab: document.getElementById("u-oab").value.trim(),
+          }),
+        });
+        ev.target.reset();
+        carregarUsuarios();
+      } catch (e) {
+        erroEl.textContent = e.message;
+      }
+    });
+
+    carregarUsuarios();
+  </script>
+</body>
+</html>

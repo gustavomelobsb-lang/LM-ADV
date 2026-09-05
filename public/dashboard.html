@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Início</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">LM-ADV</span>
+    <nav class="menu" id="menu-principal"></nav>
+    <div>
+      <span class="muted" id="usuario-logado"></span>
+      <button class="secundario" id="btn-sair">Sair</button>
+    </div>
+  </header>
+  <main>
+    <h1>Painel</h1>
+    <div class="grade-2">
+      <div class="card">
+        <h2>Teses jurídicas cadastradas</h2>
+        <p id="total-teses" class="pill">—</p>
+        <a class="botao" href="/teses.html">Gerenciar teses</a>
+      </div>
+      <div class="card">
+        <h2>Casos em andamento</h2>
+        <p id="total-casos" class="pill">—</p>
+        <a class="botao" href="/casos.html">Ver casos</a>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Fluxo de trabalho</h2>
+      <ol class="muted">
+        <li>Cadastre as teses jurídicas do escritório (fundamentação e pedidos padrão reutilizáveis).</li>
+        <li>Cadastre o cliente e abra um caso vinculando a tese aplicável.</li>
+        <li>Gere a petição inicial automaticamente a partir da tese + fatos do caso.</li>
+        <li>Consulte a jurimetria do tribunal de destino (DataJud/CNJ) para embasar a estratégia.</li>
+      </ol>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    exigirLogin();
+    montarMenu("dashboard");
+    (async () => {
+      try {
+        const { teses } = await apiFetch("/teses");
+        document.getElementById("total-teses").textContent = `${teses.length} tese(s)`;
+      } catch {}
+      try {
+        const { casos } = await apiFetch("/casos");
+        document.getElementById("total-casos").textContent = `${casos.length} caso(s)`;
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

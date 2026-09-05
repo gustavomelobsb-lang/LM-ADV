@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Jurimetria</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">LM-ADV</span>
+    <nav class="menu" id="menu-principal"></nav>
+    <div>
+      <span class="muted" id="usuario-logado"></span>
+      <button class="secundario" id="btn-sair">Sair</button>
+    </div>
+  </header>
+  <main>
+    <h1>Jurimetria</h1>
+    <div class="aviso" id="aviso-stf"></div>
+
+    <div class="card">
+      <h2>Consultar tribunal</h2>
+      <form id="form-busca">
+        <div class="grade-2">
+          <div>
+            <label for="tribunal">Tribunal</label>
+            <select id="tribunal" required></select>
+          </div>
+          <div>
+            <label for="termo">Termo de busca (assunto/classe)</label>
+            <input id="termo" placeholder="Ex.: cláusula abusiva, dano moral" />
+          </div>
+        </div>
+        <div class="grade-2">
+          <div>
+            <label for="data-inicio">Ajuizado a partir de</label>
+            <input id="data-inicio" type="date" />
+          </div>
+          <div>
+            <label for="data-fim">Ajuizado até</label>
+            <input id="data-fim" type="date" />
+          </div>
+        </div>
+        <button type="submit">Buscar</button>
+        <div id="busca-erro" class="erro"></div>
+      </form>
+    </div>
+
+    <div class="card" id="resultado" style="display:none;">
+      <h2>Resultado</h2>
+      <p><strong id="total-encontrado"></strong> processo(s) encontrados (metadados públicos).</p>
+      <div class="grade-2">
+        <div>
+          <h3>Distribuição por classe processual</h3>
+          <table><tbody id="tabela-classe"></tbody></table>
+        </div>
+        <div>
+          <h3>Distribuição por órgão julgador</h3>
+          <table><tbody id="tabela-orgao"></tbody></table>
+        </div>
+      </div>
+      <h3>Amostra de processos</h3>
+      <table>
+        <thead><tr><th>Número</th><th>Classe</th><th>Órgão julgador</th><th>Ajuizamento</th></tr></thead>
+        <tbody id="tabela-amostra"></tbody>
+      </table>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    exigirLogin();
+    montarMenu("jurimetria");
+
+    (async () => {
+      const { grupos, aviso } = await apiFetch("/jurimetria/tribunais");
+      document.getElementById("aviso-stf").textContent = aviso;
+      const select = document.getElementById("tribunal");
+      select.innerHTML = grupos
+        .map((g) => `<optgroup label="${g.descricao}">${g.aliases.map((a) => `<option value="${a.alias}">${a.nome}</option>`).join("")}</optgroup>`)
+        .join("");
+    })();
+
+    document.getElementById("form-busca").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const erroEl = document.getElementById("busca-erro");
+      erroEl.textContent = "";
+      try {
+        const { resultado } = await apiFetch("/jurimetria/buscar", {
+          method: "POST",
+          body: JSON.stringify({
+            tribunalAlias: document.getElementById("tribunal").value,
+            termoBusca: document.getElementById("termo").value.trim(),
+            dataInicio: document.getElementById("data-inicio").value || undefined,
+            dataFim: document.getElementById("data-fim").value || undefined,
+          }),
+        });
+        document.getElementById("resultado").style.display = "block";
+        document.getElementById("total-encontrado").textContent = resultado.totalEncontrado;
+        document.getElementById("tabela-classe").innerHTML = resultado.distribuicaoPorClasse
+          .map((b) => `<tr><td>${b.chave}</td><td>${b.total}</td></tr>`).join("") || `<tr><td class="muted">Sem dados</td></tr>`;
+        document.getElementById("tabela-orgao").innerHTML = resultado.distribuicaoPorOrgaoJulgador
+          .map((b) => `<tr><td>${b.chave}</td><td>${b.total}</td></tr>`).join("") || `<tr><td class="muted">Sem dados</td></tr>`;
+        document.getElementById("tabela-amostra").innerHTML = resultado.amostraProcessos
+          .map((p) => `<tr><td>${p.numeroProcesso}</td><td>${p.classe || "—"}</td><td>${p.orgaoJulgador || "—"}</td><td>${p.dataAjuizamento || "—"}</td></tr>`)
+          .join("") || `<tr><td colspan="4" class="muted">Nenhum processo encontrado</td></tr>`;
+      } catch (e) {
+        erroEl.textContent = e.message;
+      }
+    });
+  </script>
+</body>
+</html>

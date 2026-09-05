@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Teses Jurídicas</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">LM-ADV</span>
+    <nav class="menu" id="menu-principal"></nav>
+    <div>
+      <span class="muted" id="usuario-logado"></span>
+      <button class="secundario" id="btn-sair">Sair</button>
+    </div>
+  </header>
+  <main>
+    <h1>Teses Jurídicas</h1>
+    <p class="muted">Cadastre aqui a fundamentação jurídica e os pedidos padrão que o escritório já utiliza, para reaproveitar na geração automática de petições.</p>
+
+    <div class="card">
+      <h2>Nova tese</h2>
+      <form id="form-tese">
+        <div class="grade-2">
+          <div>
+            <label for="titulo">Título</label>
+            <input id="titulo" required placeholder="Ex.: Revisão de cláusulas abusivas em contrato bancário" />
+          </div>
+          <div>
+            <label for="area">Área do direito</label>
+            <input id="area" required placeholder="Ex.: Direito do Consumidor" />
+          </div>
+        </div>
+        <label for="ramos">Ramos de justiça aplicáveis (separados por vírgula)</label>
+        <input id="ramos" placeholder="Ex.: Justiça Estadual, Justiça Federal" />
+        <label for="resumo">Resumo</label>
+        <input id="resumo" placeholder="Breve resumo da tese" />
+        <label for="fundamentacao">Fundamentação jurídica ("Do Direito")</label>
+        <textarea id="fundamentacao" rows="8" required placeholder="Texto jurídico completo que será inserido na petição..."></textarea>
+        <label for="pedidos">Pedidos padrão (um por linha)</label>
+        <textarea id="pedidos" rows="4" placeholder="Ex.: A condenação da ré ao pagamento de..."></textarea>
+        <label for="tags">Tags (separadas por vírgula)</label>
+        <input id="tags" placeholder="Ex.: bancário, revisional, consumidor" />
+        <button type="submit">Salvar tese</button>
+        <div id="tese-erro" class="erro"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Teses cadastradas</h2>
+      <input id="busca" placeholder="Buscar por título, área ou tag..." style="max-width: 320px;" />
+      <table>
+        <thead><tr><th>Título</th><th>Área</th><th>Atualizado em</th></tr></thead>
+        <tbody id="tabela-teses"></tbody>
+      </table>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    exigirLogin();
+    montarMenu("teses");
+
+    async function carregarTeses(q) {
+      const query = q ? `?q=${encodeURIComponent(q)}` : "";
+      const { teses } = await apiFetch(`/teses${query}`);
+      const corpo = document.getElementById("tabela-teses");
+      corpo.innerHTML = teses
+        .map((t) => `<tr><td>${t.titulo}</td><td>${t.area_direito}</td><td>${new Date(t.atualizado_em).toLocaleDateString("pt-BR")}</td></tr>`)
+        .join("") || `<tr><td colspan="3" class="muted">Nenhuma tese cadastrada ainda.</td></tr>`;
+    }
+
+    document.getElementById("busca").addEventListener("input", (ev) => carregarTeses(ev.target.value));
+
+    document.getElementById("form-tese").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const erroEl = document.getElementById("tese-erro");
+      erroEl.textContent = "";
+      const payload = {
+        titulo: document.getElementById("titulo").value.trim(),
+        area_direito: document.getElementById("area").value.trim(),
+        ramos_justica: document.getElementById("ramos").value.split(",").map((s) => s.trim()).filter(Boolean),
+        resumo: document.getElementById("resumo").value.trim(),
+        fundamentacao: document.getElementById("fundamentacao").value.trim(),
+        pedidos_padrao: document.getElementById("pedidos").value.split("\n").map((s) => s.trim()).filter(Boolean),
+        tags: document.getElementById("tags").value.split(",").map((s) => s.trim()).filter(Boolean),
+      };
+      try {
+        await apiFetch("/teses", { method: "POST", body: JSON.stringify(payload) });
+        ev.target.reset();
+        carregarTeses();
+      } catch (e) {
+        erroEl.textContent = e.message;
+      }
+    });
+
+    carregarTeses();
+  </script>
+</body>
+</html>
