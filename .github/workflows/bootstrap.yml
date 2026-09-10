@@ -27,11 +27,23 @@ jobs:
           node-version: 20
       - run: npm ci
 
+      - name: Verificar segredos configurados
+        run: |
+          FALTANDO=""
+          [ -z "$CLOUDFLARE_API_TOKEN" ] && FALTANDO="$FALTANDO CLOUDFLARE_API_TOKEN"
+          [ -z "$CLOUDFLARE_ACCOUNT_ID" ] && FALTANDO="$FALTANDO CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$FALTANDO" ]; then
+            echo "::error::Os seguintes secrets do repositorio estao vazios ou nao existem:$FALTANDO"
+            echo "::error::Va em Settings > Secrets and variables > Actions > Repository secrets e confirme o nome exato (maiusculas, sem espacos)."
+            exit 1
+          fi
+          echo "CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID presentes (tamanhos: ${#CLOUDFLARE_API_TOKEN} e ${#CLOUDFLARE_ACCOUNT_ID} caracteres)."
+
       - name: Garantir banco D1 e registrar database_id
         run: |
           set -e
           DB_NAME="lm_adv_db"
-          EXISTING_ID=$(npx wrangler d1 list --json 2>/dev/null | node -e "
+          EXISTING_ID=$(npx wrangler d1 list --json | node -e "
             let d='';process.stdin.on('data',c=>d+=c);
             process.stdin.on('end',()=>{
               try {
