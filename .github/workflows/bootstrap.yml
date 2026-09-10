@@ -44,16 +44,9 @@ jobs:
           ")
           if [ -z "$EXISTING_ID" ]; then
             echo "Banco nao encontrado, criando..."
-            CREATE_OUT=$(npx wrangler d1 create "$DB_NAME" --json)
-            DB_ID=$(echo "$CREATE_OUT" | node -e "
-              let d='';process.stdin.on('data',c=>d+=c);
-              process.stdin.on('end',()=>{
-                try {
-                  const j = JSON.parse(d);
-                  console.log(j.uuid || j.database_id || (j.result && (j.result.uuid || j.result.database_id)) || '');
-                } catch (e) { console.log(''); }
-              });
-            ")
+            CREATE_OUT=$(npx wrangler d1 create "$DB_NAME")
+            echo "$CREATE_OUT"
+            DB_ID=$(echo "$CREATE_OUT" | grep -oE 'database_id = "[^"]+"' | head -1 | sed -E 's/database_id = "(.+)"/\1/')
           else
             echo "Banco ja existe: $EXISTING_ID"
             DB_ID="$EXISTING_ID"
