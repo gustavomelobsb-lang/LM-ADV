@@ -8,6 +8,8 @@ import clientes from "./routes/clientes";
 import casos from "./routes/casos";
 import peticoes from "./routes/peticoes";
 import jurimetria from "./routes/jurimetria";
+import instagram from "./routes/instagram";
+import leads from "./routes/leads";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -20,6 +22,8 @@ app.route("/api/clientes", clientes);
 app.route("/api/casos", casos);
 app.route("/api/peticoes", peticoes);
 app.route("/api/jurimetria", jurimetria);
+app.route("/api/instagram", instagram);
+app.route("/api/leads", leads);
 
 app.get("/api/health", (c) => c.json({ ok: true, app: c.env.APP_NAME }));
 

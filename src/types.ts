@@ -5,6 +5,9 @@ export interface Env {
   ASSETS: Fetcher;
   JWT_SECRET: string;
   DATAJUD_API_KEY?: string;
+  META_APP_ID?: string;
+  META_APP_SECRET?: string;
+  META_WEBHOOK_VERIFY_TOKEN?: string;
   APP_NAME: string;
 }
 
@@ -52,6 +55,31 @@ export interface Cliente {
   endereco: string | null;
   criado_por: number | null;
   criado_em: string;
+}
+
+export interface IntegracaoInstagram {
+  id: number;
+  instagram_user_id: string;
+  username: string | null;
+  access_token: string;
+  token_expira_em: string | null;
+  conectado_por: number | null;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export type StatusLead = "novo" | "em_atendimento" | "convertido" | "descartado";
+
+export interface Lead {
+  id: number;
+  instagram_scoped_id: string;
+  nome: string | null;
+  username: string | null;
+  status: StatusLead;
+  cliente_id: number | null;
+  atribuido_a: number | null;
+  criado_em: string;
+  atualizado_em: string;
 }
 
 export interface Caso {

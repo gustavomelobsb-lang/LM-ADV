@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Conectar Instagram</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">LM-ADV</span>
+    <nav class="menu" id="menu-principal"></nav>
+    <div>
+      <span class="muted" id="usuario-logado"></span>
+      <button class="secundario" id="btn-sair">Sair</button>
+    </div>
+  </header>
+  <main style="max-width: 560px;">
+    <h1>Conectar Instagram</h1>
+    <div class="card">
+      <div id="estado-conectado" style="display:none;">
+        <p class="sucesso">Conectado como <strong id="username-conectado"></strong></p>
+        <button class="perigo" id="btn-desconectar">Desconectar</button>
+      </div>
+      <div id="estado-desconectado" style="display:none;">
+        <p class="muted">Nenhuma conta conectada. Clique abaixo para autorizar o acesso via Instagram (a conta precisa ser profissional — Business ou Creator).</p>
+        <button id="btn-conectar">Conectar conta do Instagram</button>
+      </div>
+      <div id="erro" class="erro"></div>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    exigirLogin();
+    montarMenu("");
+
+    async function carregarStatus() {
+      const status = await apiFetch("/instagram/status");
+      document.getElementById("estado-conectado").style.display = status.conectado ? "block" : "none";
+      document.getElementById("estado-desconectado").style.display = status.conectado ? "none" : "block";
+      if (status.conectado) document.getElementById("username-conectado").textContent = "@" + status.username;
+    }
+
+    document.getElementById("btn-conectar").addEventListener("click", async () => {
+      try {
+        const { url } = await apiFetch("/instagram/conectar");
+        window.location.href = url;
+      } catch (e) {
+        document.getElementById("erro").textContent = e.message;
+      }
+    });
+
+    document.getElementById("btn-desconectar").addEventListener("click", async () => {
+      await apiFetch("/instagram/desconectar", { method: "POST" });
+      carregarStatus();
+    });
+
+    carregarStatus();
+  </script>
+</body>
+</html>

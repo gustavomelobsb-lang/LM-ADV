@@ -40,19 +40,84 @@ inteiro teor de decisões**. Para pesquisa de jurisprudência em texto integral,
 será necessário integrar futuramente os portais de jurisprudência de cada
 tribunal.
 
+## Captação de leads do Instagram (mensagens diretas)
+
+O sistema recebe automaticamente as mensagens diretas (DM) enviadas para a
+conta profissional do Instagram do escritório e transforma cada novo
+contato em um **lead** (tela **Leads Instagram**), com histórico de
+conversa, resposta direto pelo sistema e conversão em cliente com um clique.
+
+Isso usa a **Instagram API with Instagram Login** da Meta. Só funciona com
+contas **Instagram profissionais** (Business ou Creator) e exige um App
+criado por você no Meta for Developers — não é algo que se configura sem
+essa etapa manual.
+
+### Passo a passo para ativar
+
+1. **Converter a conta do Instagram** do escritório para Business ou
+   Creator (Configurações → Conta → Mudar para conta profissional), caso
+   ainda não seja.
+
+2. **Criar um App** em https://developers.facebook.com/apps → "Criar app"
+   → tipo "Business" → adicionar o produto **"Instagram"** (Instagram API
+   with Instagram Login / Business Login for Instagram).
+
+3. Nas configurações do produto Instagram do App, cadastre a **Valid OAuth
+   Redirect URI**:
+   ```
+   https://SEU-DOMINIO-OU-SUBDOMINIO.workers.dev/instagram-callback.html
+   ```
+
+4. Configure o **Webhook** do produto Instagram apontando para:
+   ```
+   https://SEU-DOMINIO-OU-SUBDOMINIO.workers.dev/api/instagram/webhook
+   ```
+   Use como "Verify Token" o mesmo valor que você vai colocar no secret
+   `META_WEBHOOK_VERIFY_TOKEN` (passo 6). Assine o campo `messages` para
+   receber as mensagens diretas.
+
+5. Anote o **App ID** e o **App Secret** (Configurações básicas do App).
+
+6. Configure os secrets do Worker:
+   ```bash
+   npx wrangler secret put META_APP_ID
+   npx wrangler secret put META_APP_SECRET
+   npx wrangler secret put META_WEBHOOK_VERIFY_TOKEN
+   # esse ultimo pode ser qualquer string aleatoria que voce escolher
+   ```
+   (Ou, via GitHub Actions, adicione esses 3 como Repository Secrets e rode
+   o workflow `bootstrap.yml` de novo.)
+
+7. Como administrador, acesse a tela **Conectar Instagram** dentro do
+   sistema e autorize o acesso com a conta profissional do escritório.
+
+### ⚠️ Sobre o App Review da Meta
+
+Enquanto o App estiver em modo de desenvolvimento, só contas cadastradas
+como **testadoras** no próprio painel do App conseguem conectar e trocar
+mensagens. Para usar com a conta real do escritório em produção (e
+receber mensagens de qualquer pessoa que escrever no Instagram), a Meta
+exige passar pelo **App Review**, solicitando a permissão avançada
+(_Advanced Access_) de `instagram_business_manage_messages` — processo
+feito diretamente no painel da Meta e que foge do escopo deste
+repositório. Sem isso, a integração funciona apenas em modo de teste.
+
 ## Estrutura do projeto
 
 ```
 src/
   index.ts              # entrada do Worker (rotas + assets)
-  routes/                # auth, usuarios, teses, clientes, casos, peticoes, jurimetria
+  routes/                # auth, usuarios, teses, clientes, casos, peticoes,
+                          # jurimetria, instagram, leads
   services/
     peticaoTemplate.ts   # motor de geração da petição inicial
     datajud.ts           # cliente da API pública do DataJud
     tribunais.ts         # tabela de tribunais/aliases
+    instagram.ts         # cliente da Instagram Messaging API (OAuth, envio, webhook)
   middleware/auth.ts      # JWT + RBAC (admin/advogado/estagiario)
-migrations/0001_init.sql  # schema do D1
-public/                   # frontend estático (login, dashboard, teses, casos, jurimetria, colaboradores)
+migrations/               # schema do D1 (0001 core, 0002 leads/Instagram)
+public/                   # frontend estático (login, dashboard, teses, casos,
+                          # jurimetria, colaboradores, leads, conexão Instagram)
 scripts/seed-admin.mjs    # cria o primeiro usuário administrador
 ```
 

@@ -14,8 +14,11 @@ database_id = "6dd7e28c-b39f-4154-8247-84293e5b9e13"
 migrations_dir = "migrations"
 
 # Secrets (definir com `wrangler secret put NOME`, nunca commitar valores):
-#   JWT_SECRET          - segredo para assinar os tokens de sessao
-#   DATAJUD_API_KEY      - chave publica da API do DataJud (ver README)
+#   JWT_SECRET               - segredo para assinar os tokens de sessao
+#   DATAJUD_API_KEY          - chave publica da API do DataJud (ver README)
+#   META_APP_ID              - App ID do App criado em developers.facebook.com (ver README)
+#   META_APP_SECRET          - App Secret do mesmo App
+#   META_WEBHOOK_VERIFY_TOKEN - string qualquer definida por voce, usada na verificacao do webhook
 
 [vars]
 APP_NAME = "LM-ADV"

@@ -52,9 +52,11 @@ function montarMenu(paginaAtiva) {
     { href: "/teses.html", rotulo: "Teses Jurídicas", id: "teses" },
     { href: "/casos.html", rotulo: "Casos e Petições", id: "casos" },
     { href: "/jurimetria.html", rotulo: "Jurimetria", id: "jurimetria" },
+    { href: "/leads.html", rotulo: "Leads Instagram", id: "leads" },
   ];
   if (usuario?.papel === "admin") {
     itens.push({ href: "/colaboradores.html", rotulo: "Colaboradores", id: "colaboradores" });
+    itens.push({ href: "/instagram-conectar.html", rotulo: "Conectar Instagram", id: "instagram" });
   }
   const nav = document.getElementById("menu-principal");
   if (!nav) return;

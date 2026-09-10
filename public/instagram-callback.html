@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Conectando Instagram...</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <main style="max-width: 480px; margin-top: 15vh;">
+    <div class="card">
+      <h1>Conectando ao Instagram...</h1>
+      <p class="muted" id="mensagem">Aguarde um instante.</p>
+      <div id="erro" class="erro"></div>
+      <a class="botao" href="/instagram-conectar.html" id="link-voltar" style="display:none;">Voltar</a>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const erroParam = params.get("error_description") || params.get("error");
+      const msgEl = document.getElementById("mensagem");
+      const erroEl = document.getElementById("erro");
+
+      if (erroParam) {
+        erroEl.textContent = erroParam;
+        document.getElementById("link-voltar").style.display = "inline-block";
+        return;
+      }
+      if (!code) {
+        erroEl.textContent = "Codigo de autorizacao nao recebido.";
+        document.getElementById("link-voltar").style.display = "inline-block";
+        return;
+      }
+      if (!obterToken()) {
+        window.location.href = "/index.html";
+        return;
+      }
+      try {
+        const resultado = await apiFetch("/instagram/oauth/trocar-codigo", {
+          method: "POST",
+          body: JSON.stringify({ code }),
+        });
+        msgEl.textContent = `Conectado como @${resultado.username}! Redirecionando...`;
+        setTimeout(() => (window.location.href = "/leads.html"), 1500);
+      } catch (e) {
+        erroEl.textContent = e.message;
+        document.getElementById("link-voltar").style.display = "inline-block";
+      }
+    })();
+  </script>
+</body>
+</html>

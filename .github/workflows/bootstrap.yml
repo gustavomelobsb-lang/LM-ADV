@@ -107,6 +107,24 @@ jobs:
             echo "::warning::DATAJUD_API_KEY nao configurado ainda - a jurimetria ficara indisponivel ate ser configurado depois"
           fi
 
+      - name: Configurar secrets do Instagram/Meta (opcional)
+        env:
+          META_APP_ID_VALUE: ${{ secrets.META_APP_ID }}
+          META_APP_SECRET_VALUE: ${{ secrets.META_APP_SECRET }}
+          META_WEBHOOK_VERIFY_TOKEN_VALUE: ${{ secrets.META_WEBHOOK_VERIFY_TOKEN }}
+        run: |
+          if [ -n "$META_APP_ID_VALUE" ]; then
+            echo "$META_APP_ID_VALUE" | npx wrangler secret put META_APP_ID
+          else
+            echo "::warning::META_APP_ID nao configurado - integracao com Instagram ficara indisponivel"
+          fi
+          if [ -n "$META_APP_SECRET_VALUE" ]; then
+            echo "$META_APP_SECRET_VALUE" | npx wrangler secret put META_APP_SECRET
+          fi
+          if [ -n "$META_WEBHOOK_VERIFY_TOKEN_VALUE" ]; then
+            echo "$META_WEBHOOK_VERIFY_TOKEN_VALUE" | npx wrangler secret put META_WEBHOOK_VERIFY_TOKEN
+          fi
+
       - name: Deploy do Worker
         run: |
           npx wrangler deploy | tee /tmp/deploy_out.txt

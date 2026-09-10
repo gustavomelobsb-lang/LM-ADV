@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Leads do Instagram</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .quadro { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+    .lista-leads { max-height: 70vh; overflow-y: auto; }
+    .item-lead { padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; }
+    .item-lead:hover, .item-lead.ativo { border-color: var(--primary); background: #eaf0f9; }
+    .thread { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .msg { padding: 8px 12px; border-radius: 12px; max-width: 75%; font-size: 0.9rem; }
+    .msg.recebida { background: #eee; align-self: flex-start; }
+    .msg.enviada { background: var(--primary); color: #fff; align-self: flex-end; }
+    @media (max-width: 800px) { .quadro { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">LM-ADV</span>
+    <nav class="menu" id="menu-principal"></nav>
+    <div>
+      <span class="muted" id="usuario-logado"></span>
+      <button class="secundario" id="btn-sair">Sair</button>
+    </div>
+  </header>
+  <main>
+    <h1>Leads do Instagram</h1>
+    <div id="aviso-desconectado" class="aviso" style="display:none;">
+      Nenhuma conta do Instagram conectada ainda. <a href="/instagram-conectar.html">Conectar agora</a>.
+    </div>
+
+    <div class="card">
+      <label for="filtro-status">Filtrar por status</label>
+      <select id="filtro-status" style="max-width: 240px;">
+        <option value="">Todos</option>
+        <option value="novo">Novo</option>
+        <option value="em_atendimento">Em atendimento</option>
+        <option value="convertido">Convertido</option>
+        <option value="descartado">Descartado</option>
+      </select>
+    </div>
+
+    <div class="quadro">
+      <div class="card lista-leads" id="lista-leads"></div>
+
+      <div class="card" id="area-detalhe" style="display:none;">
+        <h2 id="detalhe-titulo">Lead</h2>
+        <p class="muted" id="detalhe-status"></p>
+        <div class="thread" id="thread"></div>
+        <form id="form-responder">
+          <textarea id="texto-resposta" rows="2" placeholder="Escreva uma resposta..." required></textarea>
+          <button type="submit">Enviar DM</button>
+          <div id="responder-erro" class="erro"></div>
+        </form>
+        <hr style="margin: 16px 0; border-color: var(--border);" />
+        <button class="secundario" id="btn-converter">Converter em cliente</button>
+        <div id="converter-erro" class="erro"></div>
+        <div id="converter-sucesso" class="sucesso"></div>
+      </div>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    exigirLogin();
+    montarMenu("leads");
+
+    let leadSelecionado = null;
+
+    async function verificarConexao() {
+      const status = await apiFetch("/instagram/status");
+      document.getElementById("aviso-desconectado").style.display = status.conectado ? "none" : "block";
+    }
+
+    async function carregarLeads() {
+      const status = document.getElementById("filtro-status").value;
+      const query = status ? `?status=${status}` : "";
+      const { leads } = await apiFetch(`/leads${query}`);
+      const lista = document.getElementById("lista-leads");
+      lista.innerHTML = leads
+        .map(
+          (l) => `<div class="item-lead" data-id="${l.id}">
+            <strong>${l.nome || l.username || "Lead #" + l.id}</strong>
+            <div class="muted">${l.status}</div>
+          </div>`
+        )
+        .join("") || `<p class="muted">Nenhum lead ainda.</p>`;
+
+      lista.querySelectorAll(".item-lead").forEach((el) => {
+        el.addEventListener("click", () => abrirLead(Number(el.dataset.id)));
+      });
+    }
+
+    async function abrirLead(id) {
+      leadSelecionado = id;
+      document.querySelectorAll(".item-lead").forEach((el) => el.classList.toggle("ativo", Number(el.dataset.id) === id));
+      const { lead, mensagens } = await apiFetch(`/leads/${id}`);
+      document.getElementById("area-detalhe").style.display = "block";
+      document.getElementById("detalhe-titulo").textContent = lead.nome || lead.username || `Lead #${lead.id}`;
+      document.getElementById("detalhe-status").textContent = `status: ${lead.status}`;
+      document.getElementById("thread").innerHTML = mensagens
+        .map((m) => `<div class="msg ${m.direcao}">${m.texto || ""}</div>`)
+        .join("");
+      document.getElementById("converter-sucesso").textContent = "";
+      document.getElementById("converter-erro").textContent = "";
+      document.getElementById("btn-converter").style.display = lead.cliente_id ? "none" : "inline-block";
+    }
+
+    document.getElementById("filtro-status").addEventListener("change", carregarLeads);
+
+    document.getElementById("form-responder").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      if (!leadSelecionado) return;
+      const erroEl = document.getElementById("responder-erro");
+      erroEl.textContent = "";
+      try {
+        await apiFetch(`/leads/${leadSelecionado}/responder`, {
+          method: "POST",
+          body: JSON.stringify({ texto: document.getElementById("texto-resposta").value }),
+        });
+        document.getElementById("texto-resposta").value = "";
+        abrirLead(leadSelecionado);
+        carregarLeads();
+      } catch (e) {
+        erroEl.textContent = e.message;
+      }
+    });
+
+    document.getElementById("btn-converter").addEventListener("click", async () => {
+      if (!leadSelecionado) return;
+      const erroEl = document.getElementById("converter-erro");
+      const sucessoEl = document.getElementById("converter-sucesso");
+      erroEl.textContent = "";
+      try {
+        await apiFetch(`/leads/${leadSelecionado}/converter`, { method: "POST", body: JSON.stringify({}) });
+        sucessoEl.textContent = "Lead convertido em cliente! Vá em Casos para abrir um caso para ele.";
+        abrirLead(leadSelecionado);
+      } catch (e) {
+        erroEl.textContent = e.message;
+      }
+    });
+
+    verificarConexao();
+    carregarLeads();
+  </script>
+</body>
+</html>
