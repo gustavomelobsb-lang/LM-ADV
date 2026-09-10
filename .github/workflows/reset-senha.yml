@@ -6,6 +6,9 @@ on:
       email:
         description: "E-mail do colaborador que tera a senha redefinida"
         required: true
+      senha:
+        description: "Nova senha (deixe em branco para gerar uma aleatoria)"
+        required: false
 
 permissions:
   contents: read
@@ -18,6 +21,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ALVO_EMAIL: ${{ inputs.email }}
+      SENHA_DESEJADA: ${{ inputs.senha }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,10 +29,14 @@ jobs:
           node-version: 20
       - run: npm ci
 
-      - name: Gerar nova senha e atualizar no D1
+      - name: Definir/gerar senha e atualizar no D1
         run: |
           set -e
-          NOVA_SENHA=$(openssl rand -base64 15)
+          if [ -n "$SENHA_DESEJADA" ]; then
+            NOVA_SENHA="$SENHA_DESEJADA"
+          else
+            NOVA_SENHA=$(openssl rand -base64 15)
+          fi
           HASH=$(node -e "require('bcryptjs').hash(process.argv[1], 10).then(h => console.log(h))" "$NOVA_SENHA")
           ESC_EMAIL=$(printf '%s' "$ALVO_EMAIL" | tr '[:upper:]' '[:lower:]' | sed "s/'/''/g")
           npx wrangler d1 execute lm_adv_db --remote --command "UPDATE usuarios SET senha_hash = '$HASH' WHERE email = '$ESC_EMAIL'"
