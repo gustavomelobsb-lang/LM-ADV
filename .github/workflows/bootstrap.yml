@@ -1,0 +1,132 @@
+name: Bootstrap e Deploy (LM-ADV)
+
+on:
+  workflow_dispatch:
+    inputs:
+      admin_nome:
+        description: "Nome do primeiro administrador (deixe em branco para pular a criacao)"
+        required: false
+      admin_email:
+        description: "E-mail de login do primeiro administrador"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+
+      - name: Garantir banco D1 e registrar database_id
+        run: |
+          set -e
+          DB_NAME="lm_adv_db"
+          EXISTING_ID=$(npx wrangler d1 list --json 2>/dev/null | node -e "
+            let d='';process.stdin.on('data',c=>d+=c);
+            process.stdin.on('end',()=>{
+              try {
+                const list = JSON.parse(d);
+                const arr = Array.isArray(list) ? list : (list.result || []);
+                const found = arr.find(x => x.name === '$DB_NAME');
+                console.log(found ? (found.uuid || found.database_id || '') : '');
+              } catch (e) { console.log(''); }
+            });
+          ")
+          if [ -z "$EXISTING_ID" ]; then
+            echo "Banco nao encontrado, criando..."
+            CREATE_OUT=$(npx wrangler d1 create "$DB_NAME" --json)
+            DB_ID=$(echo "$CREATE_OUT" | node -e "
+              let d='';process.stdin.on('data',c=>d+=c);
+              process.stdin.on('end',()=>{
+                try {
+                  const j = JSON.parse(d);
+                  console.log(j.uuid || j.database_id || (j.result && (j.result.uuid || j.result.database_id)) || '');
+                } catch (e) { console.log(''); }
+              });
+            ")
+          else
+            echo "Banco ja existe: $EXISTING_ID"
+            DB_ID="$EXISTING_ID"
+          fi
+          if [ -z "$DB_ID" ]; then
+            echo "::error::Nao foi possivel obter o database_id do D1"
+            exit 1
+          fi
+          echo "DB_ID=$DB_ID" >> "$GITHUB_ENV"
+          sed -i "s/^database_id = .*/database_id = \"$DB_ID\"/" wrangler.toml
+          cat wrangler.toml
+
+      - name: Commitar database_id (se mudou)
+        run: |
+          if ! git diff --quiet -- wrangler.toml; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add wrangler.toml
+            git commit -m "chore: registra database_id do D1 (bootstrap automatico)"
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "wrangler.toml sem alteracoes"
+          fi
+
+      - name: Aplicar migracoes no D1 remoto
+        run: npx wrangler d1 migrations apply lm_adv_db --remote
+
+      - name: Configurar secret JWT_SECRET
+        if: ${{ secrets.JWT_SECRET != '' }}
+        run: echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET
+
+      - name: Configurar secret DATAJUD_API_KEY
+        if: ${{ secrets.DATAJUD_API_KEY != '' }}
+        run: echo "${{ secrets.DATAJUD_API_KEY }}" | npx wrangler secret put DATAJUD_API_KEY
+
+      - name: Deploy do Worker
+        run: |
+          npx wrangler deploy | tee /tmp/deploy_out.txt
+          URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' /tmp/deploy_out.txt | head -1)
+          echo "### 🚀 Deploy concluído" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "URL: $URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Criar primeiro administrador (se ainda nao existir)
+        if: ${{ inputs.admin_email != '' }}
+        env:
+          ADMIN_NOME: ${{ inputs.admin_nome }}
+          ADMIN_EMAIL: ${{ inputs.admin_email }}
+        run: |
+          set -e
+          COUNT_OUT=$(npx wrangler d1 execute lm_adv_db --remote --command "SELECT COUNT(*) as n FROM usuarios WHERE papel='admin'" --json)
+          N=$(echo "$COUNT_OUT" | node -e "
+            let d='';process.stdin.on('data',c=>d+=c);
+            process.stdin.on('end',()=>{
+              try {
+                const j = JSON.parse(d);
+                const rows = Array.isArray(j) ? (j[0].results || []) : (j.result && j.result[0] && j.result[0].results) || [];
+                console.log(rows[0] ? rows[0].n : 0);
+              } catch (e) { console.log(0); }
+            });
+          ")
+          if [ "$N" != "0" ]; then
+            echo "Ja existe administrador cadastrado, pulando criacao."
+            exit 0
+          fi
+          SENHA_GERADA=$(openssl rand -base64 18)
+          HASH=$(node -e "require('bcryptjs').hash(process.argv[1], 10).then(h => console.log(h))" "$SENHA_GERADA")
+          ESC_NOME=$(printf '%s' "$ADMIN_NOME" | sed "s/'/''/g")
+          ESC_EMAIL=$(printf '%s' "$ADMIN_EMAIL" | tr '[:upper:]' '[:lower:]' | sed "s/'/''/g")
+          npx wrangler d1 execute lm_adv_db --remote --command "INSERT INTO usuarios (nome, email, senha_hash, papel) VALUES ('$ESC_NOME', '$ESC_EMAIL', '$HASH', 'admin')"
+          echo "### 👤 Administrador criado" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **E-mail**: $ADMIN_EMAIL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Senha temporária**: \`$SENHA_GERADA\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "⚠️ Troque essa senha assim que possível, na tela **Meu Perfil** dentro do sistema." >> "$GITHUB_STEP_SUMMARY"

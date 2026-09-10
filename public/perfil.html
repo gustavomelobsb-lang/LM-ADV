@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LM-ADV — Meu Perfil</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">LM-ADV</span>
+    <nav class="menu" id="menu-principal"></nav>
+    <div>
+      <span class="muted" id="usuario-logado"></span>
+      <button class="secundario" id="btn-sair">Sair</button>
+    </div>
+  </header>
+  <main style="max-width: 480px;">
+    <h1>Meu Perfil</h1>
+    <div class="card">
+      <h2>Trocar senha</h2>
+      <p class="muted">Se você recebeu uma senha provisória, troque-a assim que possível.</p>
+      <form id="form-senha">
+        <label for="senha-atual">Senha atual</label>
+        <input id="senha-atual" type="password" required autocomplete="current-password" />
+        <label for="nova-senha">Nova senha (mín. 8 caracteres)</label>
+        <input id="nova-senha" type="password" required minlength="8" autocomplete="new-password" />
+        <button type="submit">Atualizar senha</button>
+        <div id="senha-erro" class="erro"></div>
+        <div id="senha-sucesso" class="sucesso"></div>
+      </form>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    exigirLogin();
+    montarMenu("");
+
+    document.getElementById("form-senha").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const erroEl = document.getElementById("senha-erro");
+      const sucessoEl = document.getElementById("senha-sucesso");
+      erroEl.textContent = "";
+      sucessoEl.textContent = "";
+      try {
+        await apiFetch("/auth/trocar-senha", {
+          method: "POST",
+          body: JSON.stringify({
+            senhaAtual: document.getElementById("senha-atual").value,
+            novaSenha: document.getElementById("nova-senha").value,
+          }),
+        });
+        sucessoEl.textContent = "Senha atualizada com sucesso.";
+        ev.target.reset();
+      } catch (e) {
+        erroEl.textContent = e.message;
+      }
+    });
+  </script>
+</body>
+</html>

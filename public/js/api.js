@@ -63,7 +63,7 @@ function montarMenu(paginaAtiva) {
     .join("");
 
   const nomeEl = document.getElementById("usuario-logado");
-  if (nomeEl && usuario) nomeEl.textContent = `${usuario.nome} (${usuario.papel})`;
+  if (nomeEl && usuario) nomeEl.innerHTML = `<a href="/perfil.html">${usuario.nome}</a> (${usuario.papel})`;
 
   const sairEl = document.getElementById("btn-sair");
   if (sairEl) sairEl.addEventListener("click", encerrarSessao);
