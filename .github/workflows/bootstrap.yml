@@ -82,12 +82,25 @@ jobs:
         run: npx wrangler d1 migrations apply lm_adv_db --remote
 
       - name: Configurar secret JWT_SECRET
-        if: ${{ secrets.JWT_SECRET != '' }}
-        run: echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET
+        env:
+          JWT_SECRET_VALUE: ${{ secrets.JWT_SECRET }}
+        run: |
+          if [ -n "$JWT_SECRET_VALUE" ]; then
+            echo "$JWT_SECRET_VALUE" | npx wrangler secret put JWT_SECRET
+          else
+            echo "::error::Secret JWT_SECRET nao esta configurado no repositorio (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
 
       - name: Configurar secret DATAJUD_API_KEY
-        if: ${{ secrets.DATAJUD_API_KEY != '' }}
-        run: echo "${{ secrets.DATAJUD_API_KEY }}" | npx wrangler secret put DATAJUD_API_KEY
+        env:
+          DATAJUD_API_KEY_VALUE: ${{ secrets.DATAJUD_API_KEY }}
+        run: |
+          if [ -n "$DATAJUD_API_KEY_VALUE" ]; then
+            echo "$DATAJUD_API_KEY_VALUE" | npx wrangler secret put DATAJUD_API_KEY
+          else
+            echo "::warning::DATAJUD_API_KEY nao configurado ainda - a jurimetria ficara indisponivel ate ser configurado depois"
+          fi
 
       - name: Deploy do Worker
         run: |
